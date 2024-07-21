@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing API</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+</head>
+<body>
+    <form>
+        <label for="uploader">Select a PB JSON File:</label>
+        <input type="file" id="uploader" name="uploader" accept=".json,application/json" />
+    </form>
+    <div id="results"></div>
+</body>
+</html>
+<style>
+    body {
+        font-family: 'Montserrat';
+    }
+    thead > tr > td {
+        padding: 4px;
+        font-weight: bold;
+    }
+    tbody > tr > td {
+        padding: 2px;
+    }
+    tbody > tr > td:not(:first-child) {
+        text-align: right;
+    }
+    tbody > tr:nth-child(odd) {
+        background-color: #ececec;
+    }
+    tbody > tr.noplayer > td:last-child {
+        background-color: #ff9494;
+    }
+    tbody > tr.sloplayer > td:last-child {
+        background-color: #7b5eff;
+    }
+    tbody > tr.fastplayer > td:last-child {
+        background-color: #f158ff;
+    }
+</style>
+<script>
+    var splittingtime = 340000;
+
+    $("#uploader").change(function(e) {
+        onChange(e);
+    });
+
+    function onChange(event) {
+        var reader = new FileReader();
+        reader.onload = onReaderLoad;
+        reader.readAsText(event.target.files[0]);
+    }
+
+    function onReaderLoad(event){
+        var obj = JSON.parse(event.target.result);
+        var typeing = $('#selection').val();
+
+        runSplitParsing(obj);
+    }
+
+    var runSplitParsing = function(jsonChunk) {
+        var finalData = {};
+
+        for (var i = 0; i < jsonChunk.length; i++) {
+            if (typeof finalData[jsonChunk[i].accountId] == 'undefined') {
+                finalData[jsonChunk[i].accountId] = {
+                    totalTime: 0,
+                    mapsPlayed: 0
+                };
+            }
+            finalData[jsonChunk[i].accountId].totalTime += jsonChunk[i].recordScore.time;
+            finalData[jsonChunk[i].accountId].mapsPlayed += 1;
+        }
+        
+        runSplitGeneration(finalData);
+    };
+
+    var runSplitGeneration = function (data_obj) {
+        var resultHTML = "";
+        var splitTime = splittingtime;
+
+        var players = Object.keys(data_obj);
+
+        for (var j = 0; j < players.length; j++) {
+            var thisplayer = players[j];
+            var thisdata = data_obj[thisplayer];
+            var playerinfo = {
+                discord: '',
+                tm: '',
+                id: ''
+            };
+            for (var k = 0; k < pulldata.length; k++) {
+                if (pulldata[k].id == thisplayer) {
+                    playerinfo = pulldata[k];
+                }
+            }
+
+            var isLeague = "none";
+            if (thisdata.mapsPlayed == 9 && thisdata.totalTime - splitTime >= 0) {
+                isLeague = "al";
+            } else if (thisdata.mapsPlayed == 9 && thisdata.totalTime - splitTime < 0) {
+                isLeague = "cl";
+            } else {
+                continue;
+            }
+
+            resultHTML += "<tr class=\"" + (isLeague == "none" ? "noplayer" : (isLeague == "al" ? "sloplayer" : (isLeague == "cl" ? "fastplayer" : ""))) + "\"><td>" + playerinfo.discord + "</td><td>" + playerinfo.tm + "</td><td>" + thisplayer + "</td><td>" + thisdata.mapsPlayed + "</td><td>" + showTime(thisdata.totalTime) + "</td><td>" + (thisdata.mapsPlayed == 9 ? showTime(thisdata.totalTime - splitTime) : "--") + "</td><td>" + (thisdata.mapsPlayed == 9 ? (thisdata.totalTime - splitTime >= 0 ? "AL" : "CL") : "--") + "</td></tr>";
+        }
+
+        var d = new Date();
+        $('#results').html("<table><thead><tr><td>Discord</td><td>Trackmania Name</td><td>Trackmania ID</td><td>Qualifying Maps Played</td><td>Qualifying Total Time</td><td>Split from League Breakpoint</td><td>League</td></tr></thead><tbody>" + resultHTML + "</tbody></table><div>League Split Time (overall): " + showTime(splitTime) + " | Timestamp: " + d.toLocaleString() + "</div>");
+    };
+
+    var showTime = function (duration) {
+        var negFlag = false;
+        if (duration < 0) {
+            duration = Math.abs(duration);
+            negFlag = true;
+        }
+        var milliseconds = parseInt((duration%1000));
+        var seconds = parseInt((duration/1000)%60);
+        var minutes = parseInt((duration/(1000*60))%60);
+        
+        seconds = (seconds < 10) ? "0" + seconds : seconds;
+        milliseconds = (milliseconds < 100 && milliseconds > 9) ? "0" + milliseconds : (milliseconds < 10) ? "00" + milliseconds : milliseconds;
+
+        if (duration === 0) {
+            return "00.000";
+        } else {
+            return (negFlag ? "-" : "") + (minutes > 0 ? minutes + ":" : "") + (minutes > 0 || seconds > 0 || milliseconds > 0 ? seconds + "." : "") + milliseconds;
+        }
+    }
+
+    var pulldata = [
+    {discord: "quark09", tm: "Quark19", id: "21f98ecb-701a-4027-9535-dac9f294ea81"},
+    ];
+</script>

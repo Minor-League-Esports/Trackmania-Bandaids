@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing API</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+</head>
+<body>
+    <form>
+        <label for="selection">Parse Type:</label>
+        <select id="selection" name="selection">
+            <option value="qualifying">Qualifying Status</option>
+            <option value="split">League Split</option>
+        </select>
+        <label for="uploader">Select an API JSON File to Get PBs:</label>
+        <input type="file" id="uploader" name="uploader" accept=".json,application/json" />
+    </form>
+    <div id="results"></div>
+</body>
+</html>
+<style>
+    body {
+        font-family: 'Montserrat';
+    }
+    thead > tr > td {
+        padding: 4px;
+        font-weight: bold;
+    }
+    tbody > tr > td {
+        padding: 2px;
+    }
+    tbody > tr > td:not(:first-child) {
+        text-align: right;
+    }
+    tbody > tr:nth-child(odd) {
+        background-color: #ececec;
+    }
+    tbody > tr.noplayer > td:last-child {
+        background-color: #ff9494;
+    }
+    tbody > tr.sloplayer > td:last-child {
+        background-color: #7b5eff;
+    }
+    tbody > tr.fastplayer > td:last-child {
+        background-color: #f158ff;
+    }
+</style>
+<script>
+    $("#uploader").change(function(e) {
+        onChange(e);
+    });
+
+    function onChange(event) {
+        var reader = new FileReader();
+        reader.onload = onReaderLoad;
+        reader.readAsText(event.target.files[0]);
+    }
+
+    function onReaderLoad(event){
+        var obj = JSON.parse(event.target.result);
+        var typeing = $('#selection').val();
+        console.log(obj);
+
+        if (typeing == 'split') {
+            runSplitParsing(obj);
+        } else if (typeing == 'qualifying') {
+            runQualiParsing(obj);
+        }
+        
+    }
+
+    var runQualiParsing = function(jsonChunk) {
+        var finalData = {};
+        var finalTimes = {};
+
+        for (var i = 0; i < jsonChunk.length; i++) {
+            if (typeof finalData[jsonChunk[i].accountId] == 'undefined') {
+                finalData[jsonChunk[i].accountId] = {};
+            }
+
+            if (typeof finalData[jsonChunk[i].accountId][jsonChunk[i].mapId] == 'undefined' && mapData[jsonChunk[i].mapId].isQuali) {
+                finalData[jsonChunk[i].accountId][jsonChunk[i].mapId] = jsonChunk[i].recordScore.time;
+
+                if (typeof finalTimes[jsonChunk[i].mapId] == 'undefined') {
+                    finalTimes[jsonChunk[i].mapId] = [];
+                }
+                finalTimes[jsonChunk[i].mapId].push(jsonChunk[i].recordScore.time);
+            }
+        }
+
+        for (var j = 0; j < Object.keys(finalTimes).length; j++) {
+            var mapStep = Object.keys(finalTimes)[j];
+
+            finalTimes[mapStep] = finalTimes[mapStep].sort((a, b) => a - b);
+        }
+        
+        runQualiGeneration(finalData, finalTimes);
+    };
+
+    var runSplitParsing = function(jsonChunk) {
+        var finalData = {};
+
+        for (var i = 0; i < jsonChunk.length; i++) {
+            if (typeof finalData[jsonChunk[i].accountId] == 'undefined') {
+                finalData[jsonChunk[i].accountId] = {
+                    totalTime: 0,
+                    alTime: 0,
+                    mapsPlayed: 0,
+                    alPlayed: 0
+                };
+            }
+
+            if (typeof finalData[jsonChunk[i].accountId][jsonChunk[i].mapId] == 'undefined') {
+                finalData[jsonChunk[i].accountId][jsonChunk[i].mapId] = {
+                    medal: (jsonChunk[i].medal == 4 ? 'Author' : jsonChunk[i].medal == 3 ? 'Gold' : jsonChunk[i].medal == 2 ? 'Silver' : jsonChunk[i].medal == 1 ? 'Bronze' : jsonChunk[i].medal == 0 ? 'N/A' : jsonChunk[i].medal),
+                    time: jsonChunk[i].recordScore.time,
+                    timeStamp: jsonChunk[i].timestamp
+                }
+                finalData[jsonChunk[i].accountId].totalTime += jsonChunk[i].recordScore.time;
+                finalData[jsonChunk[i].accountId].mapsPlayed += 1;
+
+                if (mapData[jsonChunk[i].mapId].isQuali) {
+                    finalData[jsonChunk[i].accountId].alTime += jsonChunk[i].recordScore.time;
+                    finalData[jsonChunk[i].accountId].alPlayed += 1;
+                }
+            }
+        }
+        
+        runSplitGeneration(finalData);
+    };
+    var runQualiGeneration = function (data_obj, map_obj) {
+        var resultHTML = "";
+
+        var players = Object.keys(data_obj);
+        players = players.sort(function(a, b) {
+            var playera = playerData[a];
+            var playerb = playerData[b];
+
+            return (playera.toLowerCase()).localeCompare(playerb.toLowerCase());
+        });
+
+        for (var i = 0; i < players.length; i++) {
+            var playertimes = data_obj[players[i]];
+            var playerTotal = 0;
+            resultHTML += '<tr><td>' + playerData[players[i]] + '</td>';
+            for (var j = 0; j < Object.keys(mapData).length; j++) {
+                var mapID = Object.keys(mapData)[j];
+                if (mapData[mapID].isQuali == true) {
+                    if (typeof playertimes[mapID] != 'undefined') {
+                        resultHTML += '<td>' + showTime(playertimes[mapID]) + '</td><td>' + (map_obj[mapID].indexOf(playertimes[mapID]) + 1) + '</td>';
+                        playerTotal += playertimes[mapID];
+                    } else {
+                        resultHTML += '<td>--</td><td>--</td>';
+                    }
+                }
+            }
+            resultHTML += '<td>' + showTime(playerTotal) + '</td>';
+            resultHTML += '</tr>';
+        }
+
+        var resultHeader = '<thead><tr><td>Trackmania Name</td>';
+        for (var k = 0; k < Object.keys(mapData).length; k++) {
+            var mapID = Object.keys(mapData)[k];
+            if (mapData[mapID].isQuali == true) {
+                resultHeader += '<td>' + mapData[mapID].name + ' Time</td><td>' + mapData[mapID].name + ' Place</td>';
+            }
+        }
+        resultHeader += '<td>Overall Time</td>';
+        resultHeader += '</tr></thead>';
+
+        $('#results').html('<table>' + resultHeader + '<tbody>' + resultHTML + '</tbody></table>');
+    };
+
+    var runSplitGeneration = function (data_obj) {
+        var resultHTML = "";
+        var alTimeArray = [];
+        var splitTime = 0;
+
+        var clCount = 0;
+        var alCount = 0;
+
+        var players = Object.keys(data_obj);
+        players = players.sort(function(a, b) {
+            var playera = data_obj[a];
+            var playerb = data_obj[b];
+
+            if (playera.alPlayed < 9) {
+                if (playera.alPlayed < playerb.alPlayed) {
+                    return 1;
+                } else {
+                    return -1;
+                }
+            } else if (playerb.alPlayed < 9) {
+                if (playera.alPlayed < playerb.alPlayed) {
+                    return 1;
+                } else {
+                    return -1;
+                }
+            } else if (playera.alPlayed == 9 && playerb.alPlayed == 9) {
+                return playera.alTime - playerb.alTime;
+            }
+        });
+
+        for (var i = 0; i < players.length; i++) {
+            var thisplayer = players[i];
+            var thisdata = data_obj[thisplayer];
+            
+            if (thisdata.alPlayed == 9) {
+                alTimeArray.push(thisdata.alTime);
+            }
+        }
+
+        alTimeArray.sort((a, b) => a - b);
+        var middleIndex = Math.floor(alTimeArray.length / 2);
+
+        if (alTimeArray.length % 2 === 0) {
+            splitTime = Math.floor((alTimeArray[middleIndex - 1] + alTimeArray[middleIndex]) / 2);
+        } else {
+            splitTime = alTimeArray[middleIndex];
+        }
+
+        for (var j = 0; j < players.length; j++) {
+            var thisplayer = players[j];
+            var thisdata = data_obj[thisplayer];
+
+            var isLeague = "none";
+            if (thisdata.alPlayed == 9 && thisdata.alTime - splitTime >= 0) {
+                alCount += 1;
+                isLeague = "al";
+            } else if (thisdata.alPlayed == 9 && thisdata.alTime - splitTime < 0) {
+                clCount += 1;
+                isLeague = "cl";
+            }
+
+            resultHTML += "<tr class=\"" + (isLeague == "none" ? "noplayer" : (isLeague == "al" ? "sloplayer" : (isLeague == "cl" ? "fastplayer" : ""))) + "\"><td>" + playerData[thisplayer] + "</td><td>" + thisdata.alPlayed + "</td><td>" + showTime(thisdata.alTime) + "</td><td>" + thisdata.mapsPlayed + "</td><td>" + showTime(thisdata.totalTime) + "</td><td>" + (thisdata.alPlayed == 9 ? showTime(thisdata.alTime - splitTime) : "--") + "</td><td>" + (thisdata.alPlayed == 9 ? (thisdata.alTime - splitTime >= 0 ? "AL" : "CL") : "--") + "</td></tr>";
+        }
+
+        $('#results').html("<table><thead><tr><td>Trackmania Name</td><td>AL Maps Played</td><td>AL Total Time</td><td>AL and CL Maps Played</td><td>AL and CL Total Time</td><td>Split from League Breakpoint</td><td>League</td></tr></thead><tbody>" + resultHTML + "</tbody></table><div>League Split Time (overall): " + showTime(splitTime) + " | CL Count: " + clCount + " | AL Count: " + alCount + "</div>");
+    };
+
+    var showTime = function (duration) {
+        var negFlag = false;
+        if (duration < 0) {
+            duration = Math.abs(duration);
+            negFlag = true;
+        }
+        var milliseconds = parseInt((duration%1000));
+        var seconds = parseInt((duration/1000)%60);
+        var minutes = parseInt((duration/(1000*60))%60);
+        
+        seconds = (seconds < 10) ? "0" + seconds : seconds;
+        milliseconds = (milliseconds < 100 && milliseconds > 9) ? "0" + milliseconds : (milliseconds < 10) ? "00" + milliseconds : milliseconds;
+
+        if (duration === 0) {
+            return "00.000";
+        } else {
+            return (negFlag ? "-" : "") + (minutes > 0 ? minutes + ":" : "") + (minutes > 0 || seconds > 0 || milliseconds > 0 ? seconds + "." : "") + milliseconds;
+        }
+    }
+
+    var mapData = {
+        "5d732993-70e3-4b80-b36b-37999dde025b": {
+            name: "Summer 2023 - 10",
+            isQuali: true
+        },
+        "25d27bb9-a648-4161-bc1c-e371b28a8f93": {
+            name: "Summer 2023 - 13",
+            isQuali: true
+        },
+        "2e2a5334-4f2d-4e78-9047-9f01c98837ba": {
+            name: "Winter 2024 - 11",
+            isQuali: true
+        },
+        "cd9369a6-2a22-4f5a-8084-955a8ca2d5e0": {
+            name: "Spring 2024 - 05",
+            isQuali: true
+        },
+        "20b9b642-e396-4ea3-a996-105c3c5d98ee": {
+            name: "Spring 2024 - 06",
+            isQuali: true
+        },
+        "6b20ec6c-f8f1-4b8b-b6e9-93089d6a2a09": {
+            name: "Spring 2024 - 11",
+            isQuali: true
+        },
+        "1255469a-bbf8-4bcf-b8bb-3ad57220d6a1": {
+            name: "Spring 2024 - 12",
+            isQuali: true
+        },
+        "f405ea1f-e805-4364-9277-d0eb746f0783": {
+            name: "Spring 2024 - 15",
+            isQuali: true
+        },
+        "f3766897-8e14-46ab-a3b4-9d43889a9b3d": {
+            name: "Spring 2024 - 16",
+            isQuali: true
+        },
+        "95e1300a-0619-4d40-a9bd-987adb1931ab": {
+            name: "Altercation",
+            isQuali: false
+        },
+        "374e9cbe-ad58-46a2-9927-c2144e50f20f": {
+            name: "Heliocentric",
+            isQuali: false
+        },
+        "588df582-ac85-4e66-be92-621c98c1ecff": {
+            name: "MLE - Hookshot",
+            isQuali: false
+        },
+        "8a0ca59f-64c4-4637-9062-f856a6ac5f35": {
+            name: "MLE - Easymode",
+            isQuali: false
+        },
+        "18380043-d8f2-49c4-aa4b-db28927cef7b": {
+            name: "Split Second",
+            isQuali: false
+        },
+        "704879a0-7ef4-49e5-9ad1-67111280be71": {
+            name: "Orichalcum",
+            isQuali: false
+        },
+        "6f71527f-a98b-46b3-ab4a-f5f41b8622ec": {
+            name: "Disintegrated ft' Ealipse",
+            isQuali: false
+        },
+        "b8c0c4df-c7a6-4417-b707-47bbd7c9df6a": {
+            name: "BEIGE V2",
+            isQuali: false
+        },
+        "c436d47f-5b53-48f9-9e82-16656ba97eb0": {
+            name: "MLE - Cyclical",
+            isQuali: false
+        },
+        "5412ecd8-1135-41be-a738-c034d1833358": {
+            name: "Once in a Blue Moon",
+            isQuali: false
+        }
+    };
+    var playerData = {
+        "a6c00566-d34e-48d7-836e-fc5020f3352f": "ChipManDan",
+        "7124300c-bd69-4ed8-aded-02adce550c67": "Zynplexity",
+        "1bba1140-85e8-42c1-8dbc-013671f9427e": "SLXNDXR_YT",
+        "71749783-12cd-49fc-95ae-ebda30f70061": "Zytabyte",
+        "0d69f40d-082f-480c-95cd-e326ef17fed8": "Devils1028",
+        "d7da5be8-5117-442a-a4fa-bd00f4dc4be9": "AntHill12",
+        "43cbc068-c881-4113-b1f2-56e35bb8d1b1": "crypt0zz",
+        "ddcace37-a43a-47ef-a77e-bd74a7dd88f9": "Benji-mon",
+        "bcbc16e8-06b5-4db6-aab0-863ec57e77fe": "Skotos_",
+        "636b0c19-4b4c-49f5-9ce0-d716ba419471": "Abrubos",
+        "b9356a5c-3bbe-426c-91bc-4cfa5698b536": "Kunics",
+        "791eec35-9582-4727-8fea-819eabf64432": "regrabmegrA",
+        "0de50356-8448-4873-b5ba-fa2890ca01b3": "OddFellowTM",
+        "1c9ac356-8a94-4f4e-9de6-0293b02f391b": "MildGymnast",
+        "3e32ffae-4f67-44f7-b94e-4ed0b167e820": "Jarhead02-_-",
+        "6e3bf3f9-7dcb-47d4-bdae-037ab66628f2": "RandomizeTM",
+        "0eec39fe-06a7-46ae-8c74-e1f9bef81b54": "jimmytx4x ",
+        "79815f8c-f56b-4a33-92bc-322eede68359": "Fahhr",
+        "d6386196-c974-415c-b17c-14ce90e41eca": "PerleTheBudgie",
+        "28b8f49c-0dc8-4743-ad72-d736b9679c20": "Achillez..",
+        "a4ac5f35-2695-4d2a-a8e5-59b70a977e44": "Briseis22",
+        "2dee2b91-c8d7-4d55-9ac8-bbb7663d08ff": "Pieman_RL",
+        "f4700006-01de-4d1b-9220-d8a82c388f94": "Bachem1",
+        "aaf3c960-6ec0-44c0-b15f-589e4e6f3aa3": "xRiiichy",
+        "955d325f-f926-4318-bfb8-f9f1e6ce764c": "Shadyjames.tm",
+        "703f8a06-3094-41ed-a39e-5f883810a6ab": "TheDK1724",
+        "b9929a99-7e60-41af-9cce-45007132e5ad": "ruferddude",
+        "04de7142-9c5b-4fab-81b1-d3cab6b54420": "Z3R0games",
+        "5553096c-b898-4c94-96cb-e4beb65f3939": "cxrdiaL",
+        "48a63bbd-4e5e-4261-9b5b-8138bfdd1477": "Taisayee",
+        "1f2ab61a-dd63-4d6b-adcc-dc3b199223a5": "Flux_compacitor",
+        "d1d0e49d-6610-4df1-873d-3e7e0a286127": "FenrirC137",
+        "bbc925e5-bb4b-4e84-9b18-309a3cfc8492": "donovanTM",
+        "514305db-aab1-417d-a8ae-eb1931c9c8c5": "SoHoDaveTTV",
+        "ccf46ddf-9cec-4f38-9807-550e41730af8": "thepiggybuggy",
+        "ce3a4dff-4ffa-40f3-92a5-44457b89765f": "Poobi3",
+        "a25fba70-5a5e-4f43-b37c-640e003c38c0": "TV_On_Fire",
+        "5dc30fa8-6040-4d7c-b7a4-ff4341e7c700": "RuthlessSixV2",
+        "a8875c6f-ea59-4578-87a7-cf5043078f13": "Zeplic",
+        "ab873fe9-0bff-4ad9-be29-d113246186db": "huntlee2017",
+        "73043422-62e2-4ea4-800e-1ad96dea5008": "Starfall_TM",
+        "bd509b51-942c-495a-bc99-5898017d5877": "Daniel-TX",
+        "27ecc232-ac1c-4c96-9dd1-c277d2de86fb": "rykrr.",
+        "9427fddd-a6d5-4801-9716-22b741afe0c5": "ben.ven",
+        "63b5f159-9195-423f-8ae7-f0bba8fea36a": "MobbiTM",
+        "ee803e52-f3ef-4e3d-863a-29dc5be86c11": "BraidedAxe",
+        "f952d398-f9c3-4a27-b672-2429cb02a00f": "Winter-TM",
+        "ad3677cf-473d-4112-860a-b8983496b68a": "LilRock2K",
+        "1dc58d03-3b58-4348-b793-e6f1647f0d80": "CinnaTranCrunch",
+        "9a860d09-60d7-4db6-99b9-75957df92d22": "IguanaParty",
+        "fb0b5198-278e-46bc-b222-ead2d642213f": "Mirplo",
+        "1c4c53f1-ada8-43ca-99e1-0901cb70c307": "FlapjackWizard",
+        "1e1f7685-c9cb-4370-ade3-831aa94a565b": "PixelMan572",
+        "ac5bac70-3056-461f-8586-444e155c6c56": "SantaTurtle",
+        "7ce25ea7-a4d7-4bea-88c2-3a389f27bca1": "Neko.Vanity",
+        "3f065632-ddc4-4b6d-958c-e17a1590cb7a": "Torquerod_",
+        "6cfaba87-bde8-4b4c-909b-c92186a9e9e9": "FyredUp",
+        "1eaceb71-8fbe-4f6a-ad01-205163cfff78": "ZeraXB",
+        "2517e642-4eba-401c-a3c0-9a6ef153f456": "PooEater28",
+        "45af8802-af38-4a55-8206-8daefa6d9149": "Acrinator",
+        "f23d2024-095d-460c-afe7-3258c6e1f217": "Pyojun34",
+        "4ff4f9e1-7360-4000-bf88-aef578b05ffe": "iCarlyTM",
+        "10c8e54a-00b8-4c8c-bc63-0eb3db3526ab": "Kratos_TM",
+        "8e450177-3b07-49bb-967a-9c993d793cf5": "abigfatpotato",
+        "7214fca2-958e-477c-b9f0-bf266a654f77": "slishys",
+        "a987e1e3-6dd0-4733-a325-0da660fe3c1c": "Schteve227",
+        "45d10f85-4627-4ab6-8e2c-ccf9f1a548f2": "LUNYSWORD7",
+        "c30f9ed0-ccb8-4c6c-a40a-a7a0b73ef6ae": "FrostyBrewTM",
+        "a1af4837-6081-4bc4-9bb2-c80e7771d7fa": "Gabiola2",
+        "2f1fb3ca-8acb-4492-bed5-c4de057bb346": "DommyHunny",
+        "45bcd4c6-7261-4dbb-b83f-ff8292083d02": "Flueffel.dpk",
+        "014bf830-ca7b-4768-8ab3-7f47ee741bb1": "ThunderB101",
+        "abdff78d-f647-4048-841e-113278f7e84e": "SirBrickenden",
+        "d0cd5cd5-dadc-406b-92c2-5a7eb686a7ff": "Mynameizmayhem",
+        "08586384-7e01-4c6b-b014-b9dce0d540a8": "LeachyLive",
+        "06ee5d48-36ac-4c53-8339-fafab697a2b5": "Maniac1397_",
+        "19ef1139-878f-444f-b509-8b2fc3dd4234": "Blaudawg",
+        "0458bf0b-b29c-480c-a00a-2f7372e36b7b": "Huski...",
+        "efdb86db-3581-45e2-b01f-007c49a6ba5b": "Sister-twiddies",
+        "5243b44b-918d-415a-8983-6a43750f060a": "ZackTheWarrior",
+        "0546a064-6805-4645-944a-f6c87b709f06": "CASPWAD",
+        "f52c4952-c579-4690-ae47-642efa35c188": "DemetriSokenzie",
+        "ab188751-c083-4aef-9c4c-967e5765927a": "PlumbingHornet3",
+        "6996100b-f6e4-45d9-a371-cb7e0a9c3454": "fze.darkstar",
+        "ffb753ea-3fa3-4770-99a1-701ca7cee84f": "acul_Stingray",
+        "967e3959-9ddd-462c-a82e-0754f976407f": "Yearlyarc56",
+        "8edc3e6a-3957-4a95-9b8b-120aa79d754f": "SlimySac45",
+        "c8b00d9b-8116-44eb-a19b-5fc0033ef38e": "ShadowRaja",
+        "654e8019-1429-46a8-8db8-54967aa186a9": "run.ski",
+        "a2afbbba-bd79-42cd-b4ed-cf5e375441b2": "Helicixity",
+        "105640c0-173c-4e62-b97b-7d3de3366861": "FehbioTM",
+        "343eb245-5945-4093-893b-02aa4ded5a85": "RelaxImaDoctor-",
+        "8f89178e-403a-46b7-87a3-6232b5575d44": "Draconic_Sword",
+        "2772e10e-396f-4f6c-b601-efc02911a6c3": "Broskijazz",
+        "00f61f38-6f4c-4885-a1cf-3cc08d5fbd86": "BigHowe",
+        "5a68e3c5-699c-48a1-a2f8-86c14cb948db": "Lolman2333",
+        "d679d2bb-9c54-4514-b9be-039391ced877": "ZTWRebel",
+        "f04a16f7-16b0-43be-b196-9e462e70cddc": "AshesF1"
+    };
+</script>
