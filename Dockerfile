@@ -1,4 +1,3 @@
-
 # Base Image: Start with a Debian image with Nginx pre-installed
 FROM debian:latest
 
@@ -22,6 +21,7 @@ EXPOSE 80
 VOLUME /var/www/html
 
 # Entrypoint Script (Custom Script to Handle Startup and Github Integration)
+COPY web/ /var/www/html
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
