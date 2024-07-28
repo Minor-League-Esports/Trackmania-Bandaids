@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing Parser, Check Console</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+</head>
+<body>
+    <div id="floatingForm">
+        <form>
+            <div class="formGroup">
+                <label for="uploader">Single File:</label>
+                <input type="file" id="uploader" name="uploader" accept=".json,application/json" />
+            </div>
+            <div class="formGroup">
+                <label for="uploader1">Away File:</label>
+                <input type="file" id="uploader1" name="uploader1" accept=".json,application/json" />
+            </div>
+            <div class="formGroup">
+                <label for="uploader2">Home File:</label>
+                <input type="file" id="uploader2" name="uploader2" accept=".json,application/json" />
+            </div>
+            <div class="formGroup">
+                <label for="league">League:</label>
+                <select name="league" id="league">
+                    <option value="academy">Academy</option>
+                    <option value="champion">Champion</option>
+                </select>
+            </div>
+            <div class="formGroup">
+                <label for="away">Away:</label>
+                <select name="away" id="away">
+                    <option value="Dodgers">Dodgers</option>
+                    <option value="Hive">Hive</option>
+                    <option value="Hurricanes">Hurricanes</option>
+                    <option value="Jets">Jets</option>
+                    <option value="Outlaws">Outlaws</option>
+                    <option value="Sabres">Sabres</option>
+                    <option value="Spectre">Spectre</option>
+                    <option value="Wizards">Wizards</option>
+                </select>
+            </div>
+            <div class="formGroup">
+                <label for="home">Home:</label>
+                <select name="home" id="home">
+                    <option value="Dodgers">Dodgers</option>
+                    <option value="Hive">Hive</option>
+                    <option value="Hurricanes">Hurricanes</option>
+                    <option value="Jets">Jets</option>
+                    <option value="Outlaws">Outlaws</option>
+                    <option value="Sabres">Sabres</option>
+                    <option value="Spectre">Spectre</option>
+                    <option value="Wizards">Wizards</option>
+                </select>
+            </div>
+            <div class="formGroup">
+                <label for="matchname">Match Subtitle:</label>
+                <input type="text" name="matchname" id="matchname" placeholder="Match 1: AL Jets vs. Hive" />
+            </div>
+            <div class="formGroup" style="margin-top: 10px;margin-bottom: 10px;width: 100%; text-align: center;">
+                <button type="submit" name="submit" id="submit">Generate</button>
+                <button type="reset" name="reset" id="reset">Reset Form</button>
+            </div>
+        </form>
+        <div class="switchbuttons">
+            <div class="selectedChoice" id="forwardButton" onclick="$('#reportedCardBackwards').hide();$('#reportedCard').show();$('#backwardsButton').removeClass('selectedChoice');$('#forwardButton').addClass('selectedChoice');">Normal</div>
+            <div id="backwardsButton" onclick="$('#reportedCard').hide();$('#reportedCardBackwards').show();$('#backwardsButton').addClass('selectedChoice');$('#forwardButton').removeClass('selectedChoice');">Flipped</div>
+            <div id="backwardsButton" onclick="$('#replay1').toggle();$('#replay2').toggle();">Toggle Compare</div>
+        </div>
+        <div style="width: 100%; margin-top: 20px;">Do Files Match? <span id="matchStatus"></span></div>
+    </div>
+    
+    <div id="reportedCard"></div>
+    <div style="display: none;" id="reportedCardBackwards"></div>
+    
+    <div style="display: none;" id="replay1" title="AWAY REPLAY"></div>
+    <div style="display: none;" id="replay2" title="HOME REPLAY"></div>
+</body>
+</html>
+<style>
+    body {
+        font-family: "Montserrat", sans-serif;
+    }
+    #floatingForm {
+        position: absolute;
+        right: 0;
+        top: 20px;
+        padding: 10px;
+        border-top-left-radius: 4px;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 4px 12px -5px #838383;
+    }
+    #floatingForm > form {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
+    }
+    .switchbuttons {
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        height: auto;
+        justify-content: space-around;
+        align-items: center;
+    }
+    .switchbuttons > div {
+        padding: 2px 6px;
+        background-color: #E7E7E7;
+        border: 1px solid #3f3f3f;
+        cursor: pointer;
+        border-radius: 4px;
+        transition-duration: 200ms;
+    }
+    .selectedChoice {
+        background-color: #B3B3B3 !important;
+    }
+    .cardContainer {
+        font-optical-sizing: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: grey;
+        background-image: linear-gradient(135deg, #000000, #4e4c4e);
+        padding: 20px;
+        padding-top: 12px !important;
+        height: auto;
+        width: 1000px;
+        margin-top: 10px;
+    }
+    .cardHeader {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+        width: 100%;
+    }
+    .titleGradient {
+        background-image: linear-gradient(45deg, #17be73, #1fbcaf);
+        background-size: 100%;
+        background-repeat: repeat;
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        -moz-background-clip: text;
+        -moz-text-fill-color: transparent;
+    }
+    .cardSubtitle {
+        color:#FFFFFF;
+        font-size: 18px;
+    }
+    .cardLogo > img {
+        height: 80px;
+        width: auto;
+        margin-left: 12px;
+    }
+    .cardInfo {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        width: auto;
+        align-items: flex-end;
+        justify-content: center;
+    }
+    .cardDesc {
+        font-size: 40px;
+        font-weight: 800;
+    }
+    .contentRow {
+        display: grid;
+        grid-template-columns: 1fr 8fr 1fr 8fr;
+        width: 100%;
+        margin-bottom: 5px;
+    }
+    .contentRow.tableHeaderRow, .contentRow:last-child {
+        margin-bottom: 0;
+    }
+    .contentRow > .minorCell {
+        background-color: #3f3f3f;
+        color: #FFFFFF;
+        font-size: 12px;
+        font-weight: 400;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+    }
+    .contentRow > .majorCell {
+        background-color: #4e4d4e;
+    }
+    .contentRow > .invisibleCell {
+        background-color: transparent;
+    }
+    .teamRow {
+        height: 40px;
+    }
+    .teamRow > :nth-child(2) {
+        border-bottom-left-radius: 4px;
+        border-top-left-radius: 4px;
+    }
+    .teamRow > :last-child {
+        border-bottom-right-radius: 4px;
+        border-top-right-radius: 4px;
+    }
+    .teamRow > .majorCell {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0px 10px;
+        color: #FFFFFF;
+    }
+    .teamContainer {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+    }
+    .teamContainer h2 {
+        margin: 0;
+        font-size: 18px;
+    }
+    .teamContainer > img {
+        max-height: 40px;
+        width: auto;
+    }
+    .teamScore {
+        font-weight: 700;
+    }
+    .dataCell {
+        display: grid;
+        grid-template-columns: 3fr 1fr 2fr 2fr 1fr;
+    }
+    .contentRow.tableHeaderRow {
+        font-weight: 700;
+    }
+    .contentRow.tableHeaderRow > .majorCell {
+        background-color: #3f3f3f;
+    }
+    .dataCell {
+        color: #FFFFFF;
+        font-size: 12px;
+    }
+    .dataCell > div {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+    }
+    .tableHeaderRow > .dataCell {
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+    }
+    .dataCell > .statLine {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        align-items: center;
+        justify-content: center;
+        height: 120px;
+    }
+    .statLine > .singleStat {
+        height: 40px;
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+    }
+    .dataCell > .statLine:first-child {
+        font-weight: 700;
+    }
+    .dataCell > .statLine:not(:first-child) {
+        font-weight: 200;
+    }
+    .resultsRow > .minorCell:first-child {
+        color: #000000;
+    }
+    .resultsRow, .resultsRow > .minorCell:first-child {
+        border-bottom-left-radius: 4px;
+        border-top-left-radius: 4px;
+    }
+    .resultsRow > .minorCell {
+        font-weight: 400;
+    }
+    .mapContainer {
+        writing-mode: vertical-rl;
+        height: 100%;
+        background-image: linear-gradient(45deg, #17be73, #1fbcaf);
+    }
+    .mapName {
+        height: 90%;
+        max-height: 120px;
+        text-align: center;
+        transform: rotate(180deg);
+        font-weight: 700;
+    }
+</style>
+<script>
+    var franchiseInfo = {
+        Dodgers: ["https://cdn.mlesports.dev/public/img/team-logos/256/Dodgers_256.png", "#041e42"],
+        Hive: ["https://cdn.mlesports.dev/public/img/team-logos/256/Hive_256.png", "#ffa000"],
+        Hurricanes: ["https://cdn.mlesports.dev/public/img/team-logos/256/Hurricanes_256.png", "#005030"],
+        Jets: ["https://cdn.mlesports.dev/public/img/team-logos/256/Jets_256.png", "#0a2b58"],
+        Outlaws: ["https://cdn.mlesports.dev/public/img/team-logos/256/Outlaws_256.png", "#981821"],
+        Sabres: ["https://cdn.mlesports.dev/public/img/team-logos/256/Sabres_256.png", "#f36a22"],
+        Spectre: ["https://cdn.mlesports.dev/public/img/team-logos/256/Spectre_256.png", "#58427c"],
+        Wizards: ["https://cdn.mlesports.dev/public/img/team-logos/256/Wizards_256.png", "#0066b2"]
+    };
+
+    function checkToBuild () {
+        if ($('#replay1').html() != '' && $('#replay1').html() == $('#replay2').html()) {
+            $('#matchStatus').html('Yes!');
+            sendtheform(true);
+        } else {
+            $('#matchStatus').html('No.');
+            $('#replay1').show();
+        }
+    }
+
+    $("#floatingForm > form").submit(function(e) {
+        e.preventDefault();
+
+        $('#replay1').html('');
+        $('#replay2').html('');
+
+        var moveOn = true;
+        if ($('#uploader')[0].files.length <= 0 && ($('#uploader1')[0].files.length <= 0 && $('#uploader2')[0].files.length <= 0)) {
+            moveOn = false;
+        }
+        if ($('#away').val() == $('#home').val()) {
+            moveOn = false;
+        }
+        if ($('#matchname').val() == '') {
+            moveOn = false;
+        }
+
+        if (moveOn) {
+            sendtheform(false);
+        }
+    });
+
+    function sendtheform(finalrun) {
+        if ($('#uploader')[0].files.length > 0) {
+            var reader = new FileReader();
+            reader.onload = onReaderLoad;
+            reader.readAsText($('#uploader')[0].files[0]);
+        } else {
+            var reader1 = new FileReader();
+            reader1.onload = onReaderLoad;
+            reader1.readAsText($('#uploader1')[0].files[0]);
+            if (!finalrun) {
+                var reader2 = new FileReader();
+                reader2.onload = onReaderLoad;
+                reader2.readAsText($('#uploader2')[0].files[0]);
+            }
+        }
+        
+    }
+
+    function onReaderLoad(event){
+        var obj = JSON.parse(event.target.result);
+        console.log(obj);
+        runParsing(obj);
+    }
+
+    var runParsing = function(jsonChunk) {
+        var match_id = 1001;
+
+        var match_data = [];
+        var map_data = [];
+        var race_data = [];
+
+        var player_data = {};
+
+        if (typeof jsonChunk != 'undefined') {
+            // Only parse through the normal match data type for now
+            if (jsonChunk.gameMode == 'TM_Teams_Online') {
+                match_data.push({
+                    start_time: new Date(jsonChunk.createdTs * 1000),
+                    server_name: jsonChunk.serverName,
+                    match_name: jsonChunk.name,
+                    file_name: jsonChunk.logName,
+                    match_id: match_id,
+                });
+
+                // if the maps object exists
+                if (typeof jsonChunk.maps != 'undefined' && jsonChunk.maps.length > 0) {
+                    // loop through each one of the maps
+                    for (var i = 0; i < jsonChunk.maps.length; i++) {
+                        var map_id = 2001 + map_data.length;
+                        var validmap = false;
+
+                        // general map information
+                        var map = jsonChunk.maps[i];
+                        var map_temp = {
+                            map_name: map.name,
+                            map_uid: map.uid,
+                            match_id: match_id,
+                            map_id: map_id
+                        };
+
+                        // if the rounds object exists
+                        if (typeof map.rounds != 'undefined' && map.rounds.length > 0) {
+
+                            // check to see if there is a -1 -> if there is, don't count until after you see it.
+                            var pastPrematch = true;
+                            var weirdNotStartIndex = -1;
+                            for (var qqqqq = 0; qqqqq < map.rounds.length; qqqqq++) {
+                                for (var www = 0; www < map.rounds[qqqqq].players.length; www++) {
+                                    if (map.rounds[qqqqq].players[www].bestTime == -1 && map.rounds[qqqqq].players[www].finished == false && map.rounds[qqqqq].players[www].dnf == false) {
+                                        weirdNotStartIndex = qqqqq;
+                                        break;
+                                    }
+                                }
+
+                                if (map.rounds[qqqqq].rulesStart < 0) {
+                                    var pastPrematch = false;
+                                }
+
+                                if (weirdNotStartIndex >= 0) {
+                                    var pastPrematch = false;
+                                }
+                            }
+
+                            // loop through each one of the rounds
+                            for (var j = 0; j < map.rounds.length; j++) {
+                                var round_data = map.rounds[j];
+                                var validround = false;
+
+                                if (round_data.rulesStart >= 0 && round_data.players.length > 0 && pastPrematch) {
+                                    if (round_data.isOnPodium == false) {
+                                        if (round_data.players.filter((obj) => obj.roundPoints > 0).length > 0) {
+                                            validround = true;
+                                        }
+                                    } else {
+                                        validround = true;
+                                    }
+                                }
+
+                                if ((round_data.rulesStart < 0 || j >= weirdNotStartIndex) && !pastPrematch) {
+                                    pastPrematch = true;
+                                }
+
+                                if (validround) {
+                                    if (round_data.isOnPodium == false) {
+                                        validmap = true;
+                                        var sorted_round_data = round_data.players.sort(function(a, b) {return b.roundPoints - a.roundPoints});
+                                        for (var k = 0; k < round_data.players.length; k++) {
+                                            var player = round_data.players[k];
+                                            if (typeof player_data[player.name] == 'undefined') {
+                                                player_data[player.name] = {
+                                                    team: player.team,
+                                                    id: 3001 + Object.keys(player_data).length
+                                                };
+                                            }
+
+                                            var single_player_round = {
+                                                player_id: player_data[player.name].id,
+                                                player_name: player.name,
+                                                map_id: map_id,
+                                                match_id: match_id,
+                                                race_id: 4001 + j,
+                                                time: (player.dnf === true ? -1 : player.cpTimes[player.cpTimes.length - 1]),
+                                                respawns: player.nbRespawns,
+                                                dnf: player.dnf,
+                                                cp_times: player.cpTimes,
+                                                respawn_place: player.nbRespawnsByCp,
+                                                respawn_times: player.respawnTimeLoss,
+                                                points: player.roundPoints,
+                                                place: (player.dnf === true ? -1 : k + 1),
+                                                team: player.team
+                                            };
+                                            race_data.push(single_player_round);
+                                        }
+                                    } else {
+                                        map_temp.final_score = round_data.teamScores;
+                                    }
+                                }
+                            }
+                        }
+
+                        // If we have found that there are any usable rounds, add that map's data to the overall match object.
+                        if (validmap === true) {
+                            map_data.push(map_temp);
+                        }
+                    }
+                }
+            }
+        }
+        
+        console.log("Built Data:");
+        console.log({
+            match_data: match_data,
+            map_data: map_data,
+            race_data: race_data
+        });
+        
+        runGeneration({
+            match_data: match_data,
+            map_data: map_data,
+            race_data: race_data
+        });
+    };
+    var runGeneration = function (match_obj) {
+        var match_data = match_obj.match_data[0];
+        var map_data = match_obj.map_data;
+        var race_data = match_obj.race_data;
+
+        var overallScore = {
+            1: 0,
+            2: 0
+        };
+
+        var player_lookup = {};
+        var player_name_to_id = {};
+        var player_order1 = [];
+        var player_order2 = [];
+
+        var leaguePicked = $('#league').val();
+        var awayPicked = $('#away').val();
+        var homePicked = $('#home').val();
+        var matchname = $('#matchname').val();
+
+        var team1 = awayPicked;
+        var team2 = homePicked;
+        var color1 = franchiseInfo[team1][1];
+        var color2 = franchiseInfo[team2][1];
+        var logo1 = franchiseInfo[team1][0];
+        var logo2 = franchiseInfo[team2][0];
+        
+        var reportCard = '';
+        var reportCardFlip = '';
+        var leagueColor = (leaguePicked == 'academy' ? '#0085FA' : '#7E55CE');
+
+        for (var i = 0; i < map_data.length; i++) {
+            var map_info = {};
+            var map_score1 = map_data[i].final_score[1] || 0;
+            var map_score2 = map_data[i].final_score[2] || 0;
+
+            if (map_score1 > map_score2) {
+                overallScore[1]++;
+            } else {
+                overallScore[2]++;
+            }
+            
+            for (var j = 0; j < race_data.filter((obj) => obj.match_id == match_data.match_id && obj.map_id == map_data[i].map_id).length; j++) {
+                var line_item = race_data.filter((obj) => obj.match_id == match_data.match_id && obj.map_id == map_data[i].map_id)[j];
+
+                if (typeof player_lookup[line_item.player_id] == 'undefined') {
+                    player_lookup[line_item.player_id] = line_item.player_name;
+                    player_name_to_id[line_item.player_name] = line_item.player_id;
+                    if (line_item.team === 1) {
+                        player_order1.push(line_item.player_name);
+                    } else if (line_item.team === 2) {
+                        player_order2.push(line_item.player_name);
+                    }
+                }
+
+                if (typeof map_info[line_item.team] == 'undefined') {
+                    map_info[line_item.team] = {};
+                }
+                if (typeof map_info[line_item.team][line_item.player_id] == 'undefined') {
+                    map_info[line_item.team][line_item.player_id] = {
+                        point_total: 0,
+                        best_time: 0,
+                        total_time: 0,
+                        dnfs: 0,
+                        total_races: 0
+                    };
+                }
+
+                map_info[line_item.team][line_item.player_id].point_total = map_info[line_item.team][line_item.player_id].point_total + line_item.points;
+                if ((map_info[line_item.team][line_item.player_id].best_time == 0 || map_info[line_item.team][line_item.player_id].best_time >= line_item.time) && line_item.dnf != true) {
+                    map_info[line_item.team][line_item.player_id].best_time = line_item.time;
+                }
+                map_info[line_item.team][line_item.player_id].total_time = map_info[line_item.team][line_item.player_id].total_time + line_item.time;
+                if (line_item.dnf === true) {
+                    map_info[line_item.team][line_item.player_id].dnfs = map_info[line_item.team][line_item.player_id].dnfs + 1;
+                }
+                map_info[line_item.team][line_item.player_id].total_races = map_info[line_item.team][line_item.player_id].total_races + 1;
+            }
+
+            for (var y = 0; y < Object.keys(map_info).length; y++) {
+                var temp_mapid = Object.keys(map_info)[y];
+                if (temp_mapid > 0) {
+                    var temp_obj = map_info[Object.keys(map_info)[y]];
+                    for (var z = 0; z < Object.keys(temp_obj).length; z++) {
+                        var temp_id = Object.keys(temp_obj)[z];
+                        var temp_person = temp_obj[Object.keys(temp_obj)[z]];
+
+                        // Remove the people that we think might actually be a waste of space
+                        if (temp_person.point_total === 0 && temp_person.best_time === 0 && temp_person.total_time === (0 - temp_person.dnfs) && temp_person.dnfs === temp_person.total_races) {
+                            player_order1 = player_order1.filter(function(item) {return item !== player_lookup[temp_id]});
+                            player_order2 = player_order2.filter(function(item) {return item !== player_lookup[temp_id]});
+                            delete map_info[temp_mapid][temp_id];
+                        }
+                    }
+                }
+            }
+
+            /* Sort By Name 
+            player_order1 = player_order1.sort(function(a, b) {return a.toUpperCase().localeCompare(b.toUpperCase())});
+            player_order2 = player_order2.sort(function(a, b) {return a.toUpperCase().localeCompare(b.toUpperCase())}); /*  */
+            /* Sort By Points */
+
+            player_order1 = player_order1.sort(function(a, b) {return map_info[1][player_name_to_id[b]].point_total - map_info[1][player_name_to_id[a]].point_total});
+            player_order2 = player_order2.sort(function(a, b) {return map_info[2][player_name_to_id[b]].point_total - map_info[2][player_name_to_id[a]].point_total}); /*  */
+
+            reportCard += '<div class="contentRow resultsRow">' +
+                '<div class="minorCell mapContainer"><div class="mapName">' + map_data[i].map_name + '</div></div>' +
+                '<div class="majorCell dataCell">' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order1.length; x++) {
+                            reportCard += '<div class="singleStat">' + player_order1[x] + '</div>';
+                        }
+                        reportCard += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order1.length; x++) {
+                            reportCard += '<div class="singleStat">' + map_info[1][player_name_to_id[player_order1[x]]].point_total + '</div>';
+                        }
+                        reportCard += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order1.length; x++) {
+                            var thistime1 = new Date(map_info[1][player_name_to_id[player_order1[x]]].best_time);
+                            reportCard += '<div class="singleStat">' + (map_info[1][player_name_to_id[player_order1[x]]].best_time >= 60000 ? String(thistime1.getUTCMinutes()) + ':' : '') + String(thistime1.getUTCSeconds()).padStart(2, "0") + '.' + String(thistime1.getUTCMilliseconds()).padStart(3, "0") + '</div>';
+                        }
+                        reportCard += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order1.length; x++) {
+                            var thistime2 = new Date(Math.ceil(map_info[1][player_name_to_id[player_order1[x]]].total_time / (map_info[1][player_name_to_id[player_order1[x]]].total_races - map_info[1][player_name_to_id[player_order1[x]]].dnfs)));
+                            reportCard += '<div class="singleStat">' + (Math.ceil(map_info[1][player_name_to_id[player_order1[x]]].total_time / (map_info[1][player_name_to_id[player_order1[x]]].total_races - map_info[1][player_name_to_id[player_order1[x]]].dnfs)) >= 60000 ? String(thistime2.getUTCMinutes()) + ':' : '') + String(thistime2.getUTCSeconds()).padStart(2, "0") + '.' + String(thistime2.getUTCMilliseconds()).padStart(3, "0") + '</div>';
+                        }
+                        reportCard += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order1.length; x++) {
+                            reportCard += '<div class="singleStat">' + map_info[1][player_name_to_id[player_order1[x]]].dnfs + '</div>';
+                        }
+                        reportCard += '</div>' +
+                '</div>' +
+                '<div class="minorCell" style="background-color: ' + (map_score1 > map_score2 ? color1 : color2) + ';">' + map_score1 + ' - ' + map_score2 + '</div>' +
+                '<div class="majorCell dataCell">' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order2.length; x++) {
+                            reportCard += '<div class="singleStat">' + player_order2[x] + '</div>';
+                        }
+                        reportCard += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order2.length; x++) {
+                            reportCard += '<div class="singleStat">' + map_info[2][player_name_to_id[player_order2[x]]].point_total + '</div>';
+                        }
+                        reportCard += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order2.length; x++) {
+                            var thistime3 = new Date(map_info[2][player_name_to_id[player_order2[x]]].best_time);
+                            reportCard += '<div class="singleStat">' + (map_info[2][player_name_to_id[player_order2[x]]].best_time >= 60000 ? String(thistime3.getUTCMinutes()) + ':' : '') + String(thistime3.getUTCSeconds()).padStart(2, "0") + '.' + String(thistime3.getUTCMilliseconds()).padStart(3, "0") + '</div>';
+                        }
+                        reportCard += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order2.length; x++) {
+                            var thistime4 = new Date(Math.ceil(map_info[2][player_name_to_id[player_order2[x]]].total_time / (map_info[2][player_name_to_id[player_order2[x]]].total_races - map_info[2][player_name_to_id[player_order2[x]]].dnfs)));
+                            reportCard += '<div class="singleStat">' + (Math.ceil(map_info[2][player_name_to_id[player_order2[x]]].total_time / (map_info[2][player_name_to_id[player_order2[x]]].total_races - map_info[2][player_name_to_id[player_order2[x]]].dnfs)) >= 60000 ? String(thistime4.getUTCMinutes()) + ':' : '') + String(thistime4.getUTCSeconds()).padStart(2, "0") + '.' + String(thistime4.getUTCMilliseconds()).padStart(3, "0") + '</div>';
+                        }
+                        reportCard += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order2.length; x++) {
+                            reportCard += '<div class="singleStat">' + map_info[2][player_name_to_id[player_order2[x]]].dnfs + '</div>';
+                        }
+                        reportCard += '</div>' +
+                '</div>' +
+            '</div>';
+
+            reportCardFlip += '<div class="contentRow resultsRow">' +
+                '<div class="minorCell mapContainer"><div class="mapName">' + map_data[i].map_name + '</div></div>' +
+                '<div class="majorCell dataCell">' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order2.length; x++) {
+                            reportCardFlip += '<div class="singleStat">' + player_order2[x] + '</div>';
+                        }
+                        reportCardFlip += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order2.length; x++) {
+                            reportCardFlip += '<div class="singleStat">' + map_info[2][player_name_to_id[player_order2[x]]].point_total + '</div>';
+                        }
+                        reportCardFlip += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order2.length; x++) {
+                            var thistime3 = new Date(map_info[2][player_name_to_id[player_order2[x]]].best_time);
+                            reportCardFlip += '<div class="singleStat">' + (map_info[2][player_name_to_id[player_order2[x]]].best_time >= 60000 ? String(thistime3.getUTCMinutes()) + ':' : '') + String(thistime3.getUTCSeconds()).padStart(2, "0") + '.' + String(thistime3.getUTCMilliseconds()).padStart(3, "0") + '</div>';
+                        }
+                        reportCardFlip += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order2.length; x++) {
+                            var thistime4 = new Date(Math.ceil(map_info[2][player_name_to_id[player_order2[x]]].total_time / (map_info[2][player_name_to_id[player_order2[x]]].total_races - map_info[2][player_name_to_id[player_order2[x]]].dnfs)));
+                            reportCardFlip += '<div class="singleStat">' + (Math.ceil(map_info[2][player_name_to_id[player_order2[x]]].total_time / (map_info[2][player_name_to_id[player_order2[x]]].total_races - map_info[2][player_name_to_id[player_order2[x]]].dnfs)) >= 60000 ? String(thistime4.getUTCMinutes()) + ':' : '') + String(thistime4.getUTCSeconds()).padStart(2, "0") + '.' + String(thistime4.getUTCMilliseconds()).padStart(3, "0") + '</div>';
+                        }
+                        reportCardFlip += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order2.length; x++) {
+                            reportCardFlip += '<div class="singleStat">' + map_info[2][player_name_to_id[player_order2[x]]].dnfs + '</div>';
+                        }
+                        reportCardFlip += '</div>' +
+                '</div>' +
+                '<div class="minorCell" style="background-color: ' + (map_score2 > map_score1 ? color2 : color1) + ';">' + map_score2 + ' - ' + map_score1 + '</div>' +
+                '<div class="majorCell dataCell">' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order1.length; x++) {
+                            reportCardFlip += '<div class="singleStat">' + player_order1[x] + '</div>';
+                        }
+                        reportCardFlip += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order1.length; x++) {
+                            reportCardFlip += '<div class="singleStat">' + map_info[1][player_name_to_id[player_order1[x]]].point_total + '</div>';
+                        }
+                        reportCardFlip += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order1.length; x++) {
+                            var thistime1 = new Date(map_info[1][player_name_to_id[player_order1[x]]].best_time);
+                            reportCardFlip += '<div class="singleStat">' + (map_info[1][player_name_to_id[player_order1[x]]].best_time >= 60000 ? String(thistime1.getUTCMinutes()) + ':' : '') + String(thistime1.getUTCSeconds()).padStart(2, "0") + '.' + String(thistime1.getUTCMilliseconds()).padStart(3, "0") + '</div>';
+                        }
+                        reportCardFlip += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order1.length; x++) {
+                            var thistime2 = new Date(Math.ceil(map_info[1][player_name_to_id[player_order1[x]]].total_time / (map_info[1][player_name_to_id[player_order1[x]]].total_races - map_info[1][player_name_to_id[player_order1[x]]].dnfs)));
+                            reportCardFlip += '<div class="singleStat">' + (Math.ceil(map_info[1][player_name_to_id[player_order1[x]]].total_time / (map_info[1][player_name_to_id[player_order1[x]]].total_races - map_info[1][player_name_to_id[player_order1[x]]].dnfs)) >= 60000 ? String(thistime2.getUTCMinutes()) + ':' : '') + String(thistime2.getUTCSeconds()).padStart(2, "0") + '.' + String(thistime2.getUTCMilliseconds()).padStart(3, "0") + '</div>';
+                        }
+                        reportCardFlip += '</div>' +
+                    '<div class="statLine">';
+                        for (var x = 0; x < player_order1.length; x++) {
+                            reportCardFlip += '<div class="singleStat">' + map_info[1][player_name_to_id[player_order1[x]]].dnfs + '</div>';
+                        }
+                        reportCardFlip += '</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        // Close it up by adding the summary to the top.
+        reportCard = '<style>.mapContainer {background: ' + leagueColor + ' !important;}</style><div class="cardContainer">' +
+            '<div class="cardHeader">' +
+                '<div class="cardInfo">' +
+                    '<div class="cardDesc titleGradient">REPORT CARD</div>' +
+                    '<div class="cardSubtitle">' + /*match_data.match_name*/ matchname + '</div>' +
+                '</div>' +
+                '<div class="cardLogo"><img src="MLE_TM_logo.svg" /></div>' +
+            '</div>' +
+            '<div class="contentRow teamRow">' +
+                '<div class="minorCell invisibleCell"></div>' +
+                '<div class="majorCell" style="background-color: ' + color1 + ';">' +
+                    '<div class="teamContainer">' +
+                        '<img style="margin-right:5px;" src="' + logo1 + '" />' +
+                        '<h2>' + team1 + '</h2>' +
+                        '</div>' +
+                    '<div class="teamScore">' + overallScore[1] + '</div>' +
+                '</div>' +
+                '<div class="minorCell">VS.</div>' +
+                '<div class="majorCell" style="background-color: ' + color2 + '">' +
+                    '<div class="teamScore">' + overallScore[2] + '</div>' +
+                    '<div class="teamContainer">' +
+                        '<h2>' + team2 + '</h2>' +
+                        '<img style="margin-left:5px;" src="' + logo2 + '" />' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="contentRow tableHeaderRow">' +
+                '<div class="minorCell invisibleCell"></div>' +
+                '<div class="majorCell dataCell">' +
+                    '<div>Player Name</div>' +
+                    '<div>Points</div>' +
+                    '<div>Best Time</div>' +
+                    '<div>Average Time</div>' +
+                    '<div>DNFs</div>' +
+                '</div>' +
+                '<div class="minorCell invisibleCell"></div>' +
+                '<div class="majorCell dataCell">' +
+                    '<div>Player Name</div>' +
+                    '<div>Points</div>' +
+                    '<div>Best Time</div>' +
+                    '<div>Average Time</div>' +
+                    '<div>DNFs</div>' +
+                '</div>' +
+            '</div>' + reportCard +
+        '</div>';
+
+        reportCardFlip = '<style>.mapContainer {background: ' + leagueColor + ' !important;}</style><div class="cardContainer">' +
+            '<div class="cardHeader">' +
+                '<div class="cardInfo">' +
+                    '<div class="cardDesc titleGradient">REPORT CARD</div>' +
+                    '<div class="cardSubtitle">' + /*match_data.match_name*/ matchname + '</div>' +
+                '</div>' +
+                '<div class="cardLogo"><img src="MLE_TM_logo.svg" /></div>' +
+            '</div>' +
+            '<div class="contentRow teamRow">' +
+                '<div class="minorCell invisibleCell"></div>' +
+                '<div class="majorCell" style="background-color: ' + color2 + ';">' +
+                    '<div class="teamContainer">' +
+                        '<img style="margin-right:5px;" src="' + logo2 + '" />' +
+                        '<h2>' + team2 + '</h2>' +
+                        '</div>' +
+                    '<div class="teamScore">' + overallScore[2] + '</div>' +
+                '</div>' +
+                '<div class="minorCell">VS.</div>' +
+                '<div class="majorCell" style="background-color: ' + color1 + '">' +
+                    '<div class="teamScore">' + overallScore[1] + '</div>' +
+                    '<div class="teamContainer">' +
+                        '<h2>' + team1 + '</h2>' +
+                        '<img style="margin-left:5px;" src="' + logo1 + '" />' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="contentRow tableHeaderRow">' +
+                '<div class="minorCell invisibleCell"></div>' +
+                '<div class="majorCell dataCell">' +
+                    '<div>Player Name</div>' +
+                    '<div>Points</div>' +
+                    '<div>Best Time</div>' +
+                    '<div>Average Time</div>' +
+                    '<div>DNFs</div>' +
+                '</div>' +
+                '<div class="minorCell invisibleCell"></div>' +
+                '<div class="majorCell dataCell">' +
+                    '<div>Player Name</div>' +
+                    '<div>Points</div>' +
+                    '<div>Best Time</div>' +
+                    '<div>Average Time</div>' +
+                    '<div>DNFs</div>' +
+                '</div>' +
+            '</div>' + reportCardFlip +
+        '</div>';
+
+
+        if ($('#replay1').html() == '') {
+            $('#replay1').html(reportCard);
+        } else if ($('#replay2').html() == '') {
+            $('#replay2').html(reportCard);
+            checkToBuild();
+        } else if ($('#replay1').html() == $('#replay2').html()) {
+            $('#reportedCard').html(reportCard);
+            $('#reportedCardBackwards').html(reportCardFlip);
+        }
+    };
+</script>
