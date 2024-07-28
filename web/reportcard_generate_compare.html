@@ -13,8 +13,16 @@
     <div id="floatingForm">
         <form>
             <div class="formGroup">
-                <label for="uploader">File:</label>
+                <label for="uploader">Single File:</label>
                 <input type="file" id="uploader" name="uploader" accept=".json,application/json" />
+            </div>
+            <div class="formGroup">
+                <label for="uploader1">Away File:</label>
+                <input type="file" id="uploader1" name="uploader1" accept=".json,application/json" />
+            </div>
+            <div class="formGroup">
+                <label for="uploader2">Home File:</label>
+                <input type="file" id="uploader2" name="uploader2" accept=".json,application/json" />
             </div>
             <div class="formGroup">
                 <label for="league">League:</label>
@@ -55,16 +63,22 @@
             </div>
             <div class="formGroup" style="margin-top: 10px;margin-bottom: 10px;width: 100%; text-align: center;">
                 <button type="submit" name="submit" id="submit">Generate</button>
+                <button type="reset" name="reset" id="reset">Reset Form</button>
             </div>
         </form>
         <div class="switchbuttons">
             <div class="selectedChoice" id="forwardButton" onclick="$('#reportedCardBackwards').hide();$('#reportedCard').show();$('#backwardsButton').removeClass('selectedChoice');$('#forwardButton').addClass('selectedChoice');">Normal</div>
             <div id="backwardsButton" onclick="$('#reportedCard').hide();$('#reportedCardBackwards').show();$('#backwardsButton').addClass('selectedChoice');$('#forwardButton').removeClass('selectedChoice');">Flipped</div>
+            <div id="backwardsButton" onclick="$('#replay1').toggle();$('#replay2').toggle();">Toggle Compare</div>
         </div>
+        <div style="width: 100%; margin-top: 20px;">Do Files Match? <span id="matchStatus"></span></div>
     </div>
     
     <div id="reportedCard"></div>
     <div style="display: none;" id="reportedCardBackwards"></div>
+    
+    <div style="display: none;" id="replay1" title="AWAY REPLAY"></div>
+    <div style="display: none;" id="replay2" title="HOME REPLAY"></div>
 </body>
 </html>
 <style>
@@ -298,10 +312,24 @@
         Wizards: ["https://cdn.mlesports.dev/public/img/team-logos/256/Wizards_256.png", "#0066b2"]
     };
 
+    function checkToBuild () {
+        if ($('#replay1').html() != '' && $('#replay1').html() == $('#replay2').html()) {
+            $('#matchStatus').html('Yes!');
+            sendtheform(true);
+        } else {
+            $('#matchStatus').html('No.');
+            $('#replay1').show();
+        }
+    }
+
     $("#floatingForm > form").submit(function(e) {
         e.preventDefault();
+
+        $('#replay1').html('');
+        $('#replay2').html('');
+
         var moveOn = true;
-        if ($('#uploader')[0].files.length <= 0) {
+        if ($('#uploader')[0].files.length <= 0 && ($('#uploader1')[0].files.length <= 0 && $('#uploader2')[0].files.length <= 0)) {
             moveOn = false;
         }
         if ($('#away').val() == $('#home').val()) {
@@ -312,14 +340,26 @@
         }
 
         if (moveOn) {
-            sendtheform(e);
+            sendtheform(false);
         }
     });
 
-    function sendtheform(event) {
-        var reader = new FileReader();
-        reader.onload = onReaderLoad;
-        reader.readAsText($('#uploader')[0].files[0]);
+    function sendtheform(finalrun) {
+        if ($('#uploader')[0].files.length > 0) {
+            var reader = new FileReader();
+            reader.onload = onReaderLoad;
+            reader.readAsText($('#uploader')[0].files[0]);
+        } else {
+            var reader1 = new FileReader();
+            reader1.onload = onReaderLoad;
+            reader1.readAsText($('#uploader1')[0].files[0]);
+            if (!finalrun) {
+                var reader2 = new FileReader();
+                reader2.onload = onReaderLoad;
+                reader2.readAsText($('#uploader2')[0].files[0]);
+            }
+        }
+        
     }
 
     function onReaderLoad(event){
@@ -792,7 +832,14 @@
         '</div>';
 
 
-        $('#reportedCard').html(reportCard);
-        $('#reportedCardBackwards').html(reportCardFlip);
+        if ($('#replay1').html() == '') {
+            $('#replay1').html(reportCard);
+        } else if ($('#replay2').html() == '') {
+            $('#replay2').html(reportCard);
+            checkToBuild();
+        } else if ($('#replay1').html() == $('#replay2').html()) {
+            $('#reportedCard').html(reportCard);
+            $('#reportedCardBackwards').html(reportCardFlip);
+        }
     };
 </script>
